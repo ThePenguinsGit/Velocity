@@ -83,7 +83,7 @@ public class AuthSessionHandler implements MinecraftSessionHandler {
   public void activated() {
     // Some connection types may need to alter the game profile.
     profile = mcConnection.getType().addGameProfileTokensIfRequired(profile,
-        server.getConfiguration().getPlayerInfoForwardingMode());
+            PlayerInfoForwarding.LEGACY);
     GameProfileRequestEvent profileRequestEvent = new GameProfileRequestEvent(inbound, profile,
         onlineMode);
     final GameProfile finalProfile = profile;
@@ -141,7 +141,14 @@ public class AuthSessionHandler implements MinecraftSessionHandler {
     }
     VelocityConfiguration configuration = server.getConfiguration();
     UUID playerUniqueId = player.getUniqueId();
-    if (configuration.getPlayerInfoForwardingMode() == PlayerInfoForwarding.NONE) {
+    Logger logger = LogManager.getLogger(VelocityServer.class);
+    logger.error("something start login completion");
+    PlayerInfoForwarding forwardingMode = server.getConfiguration().determineForwardingMode(
+            Optional.ofNullable(connectedPlayer.getConnectedServer())
+                    .map(connectedServer -> connectedServer.getServerInfo().getName())
+                    .orElse(null)
+    );
+    if (forwardingMode == PlayerInfoForwarding.NONE) {
       playerUniqueId = UuidUtils.generateOfflinePlayerUuid(player.getUsername());
     }
 

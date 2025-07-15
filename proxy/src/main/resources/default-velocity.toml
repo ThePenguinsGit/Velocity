@@ -98,6 +98,11 @@ try = [
     "minigames"
 ]
 
+[forwarding-modes]
+# Configure your forwarding modes here, default is player-info-forwarding-mode.
+"lobby" = "MODERN"
+"factions" = "LEGACY"
+
 [advanced]
 # How large a Minecraft packet has to be before we compress it. Setting this to zero will
 # compress all packets, and setting it to -1 will disable compression entirely.

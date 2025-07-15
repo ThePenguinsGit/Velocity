@@ -82,6 +82,7 @@ public class VelocityConfiguration implements ProxyConfig {
   private boolean samplePlayersInPing = false;
   private final Servers servers;
   private final ForcedHosts forcedHosts;
+  private final ForwardingModes forwardingModes;
   @Expose
   private final Advanced advanced;
   @Expose
@@ -94,10 +95,11 @@ public class VelocityConfiguration implements ProxyConfig {
   @Expose
   private boolean forceKeyAuthentication = true; // Added in 1.19
 
-  private VelocityConfiguration(Servers servers, ForcedHosts forcedHosts, Advanced advanced,
+  private VelocityConfiguration(Servers servers, ForcedHosts forcedHosts, ForwardingModes forwardingModes, Advanced advanced,
       Query query, Metrics metrics) {
     this.servers = servers;
     this.forcedHosts = forcedHosts;
+    this.forwardingModes = forwardingModes;
     this.advanced = advanced;
     this.query = query;
     this.metrics = metrics;
@@ -108,7 +110,7 @@ public class VelocityConfiguration implements ProxyConfig {
       PlayerInfoForwarding playerInfoForwardingMode, byte[] forwardingSecret,
       boolean onlineModeKickExistingPlayers, PingPassthroughMode pingPassthrough,
       boolean samplePlayersInPing, boolean enablePlayerAddressLogging, Servers servers,
-      ForcedHosts forcedHosts, Advanced advanced, Query query, Metrics metrics,
+      ForcedHosts forcedHosts, ForwardingModes forwardingModes, Advanced advanced, Query query, Metrics metrics,
       boolean forceKeyAuthentication) {
     this.bind = bind;
     this.motd = motd;
@@ -124,6 +126,7 @@ public class VelocityConfiguration implements ProxyConfig {
     this.enablePlayerAddressLogging = enablePlayerAddressLogging;
     this.servers = servers;
     this.forcedHosts = forcedHosts;
+    this.forwardingModes = forwardingModes;
     this.advanced = advanced;
     this.query = query;
     this.metrics = metrics;
@@ -306,6 +309,16 @@ public class VelocityConfiguration implements ProxyConfig {
     return playerInfoForwardingMode;
   }
 
+  /**
+   * Reads the Velocity configuration from {@code path}.
+   *
+   * @param serverName need I say more
+   * @return a PlayerInfoForwarding instance
+   */
+  public PlayerInfoForwarding determineForwardingMode(@Nullable String serverName) {
+    return forwardingModes.determineForwardingMode(serverName);
+  }
+
   public byte[] getForwardingSecret() {
     return forwardingSecret.clone();
   }
@@ -461,6 +474,7 @@ public class VelocityConfiguration implements ProxyConfig {
         .add("announceForge", announceForge)
         .add("servers", servers)
         .add("forcedHosts", forcedHosts)
+        .add("forwardingModes", forwardingModes)
         .add("advanced", advanced)
         .add("query", query)
         .add("favicon", favicon)
@@ -537,6 +551,7 @@ public class VelocityConfiguration implements ProxyConfig {
       // Read the rest of the config
       final CommentedConfig serversConfig = config.get("servers");
       final CommentedConfig forcedHostsConfig = config.get("forced-hosts");
+      final CommentedConfig forwardingModes = config.get("forwarding-modes");
       final CommentedConfig advancedConfig = config.get("advanced");
       final CommentedConfig queryConfig = config.get("query");
       final CommentedConfig metricsConfig = config.get("metrics");
@@ -581,6 +596,7 @@ public class VelocityConfiguration implements ProxyConfig {
               enablePlayerAddressLogging,
               new Servers(serversConfig),
               new ForcedHosts(forcedHostsConfig),
+              new ForwardingModes(forwardingModes, forwardingMode),
               new Advanced(advancedConfig),
               new Query(queryConfig),
               new Metrics(metricsConfig),
@@ -678,6 +694,66 @@ public class VelocityConfiguration implements ProxyConfig {
           + "servers=" + servers
           + ", attemptConnectionOrder=" + attemptConnectionOrder
           + '}';
+    }
+  }
+
+  private static class ForwardingModes {
+    private Map<String, PlayerInfoForwarding> forwardingModes = ImmutableMap.of(
+            "lobby", PlayerInfoForwarding.MODERN,
+            "factions", PlayerInfoForwarding.LEGACY
+    );
+
+    private PlayerInfoForwarding forwardingMode;
+
+    private ForwardingModes() {
+    }
+
+    private ForwardingModes(CommentedConfig config, PlayerInfoForwarding forwardingMode) {
+      this.forwardingMode = forwardingMode;
+      if (config != null) {
+        Map<String, PlayerInfoForwarding> forwardingModes = new HashMap<>();
+        for (UnmodifiableConfig.Entry entry : config.entrySet()) {
+          if (entry.getValue() instanceof String) {
+            forwardingModes.put(entry.getKey().toLowerCase(Locale.ROOT),
+                    PlayerInfoForwarding.valueOf(entry.getValue()));
+          } else {
+            throw new IllegalStateException(
+                    "Invalid value of type " + entry.getValue().getClass() + " in forwarding modes!");
+          }
+        }
+        this.forwardingModes = ImmutableMap.copyOf(forwardingModes);
+      }
+    }
+
+    private ForwardingModes(Map<String, PlayerInfoForwarding> forwardingModes) {
+      this.forwardingModes = forwardingModes;
+    }
+
+    private Map<String, PlayerInfoForwarding> getForwardingModes() {
+      return forwardingModes;
+    }
+
+    private void setForwardingModes(Map<String, PlayerInfoForwarding> forwardingModes) {
+      this.forwardingModes = forwardingModes;
+    }
+
+    public PlayerInfoForwarding determineForwardingMode(@Nullable String serverName) {
+      if (serverName == null) {
+        return this.forwardingMode;
+      }
+      Map<String, PlayerInfoForwarding> forwardingModes = this.getForwardingModes();
+
+      return forwardingModes.getOrDefault(
+              serverName,
+              this.forwardingMode
+      );
+    }
+
+    @Override
+    public String toString() {
+      return "ForwardingModes{"
+              + "forwardingModes=" + forwardingModes
+              + '}';
     }
   }
 

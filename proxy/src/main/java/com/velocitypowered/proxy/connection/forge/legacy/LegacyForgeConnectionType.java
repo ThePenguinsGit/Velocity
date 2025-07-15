@@ -42,10 +42,6 @@ public class LegacyForgeConnectionType extends ConnectionTypeImpl {
     // since both use the "hostname" field in the handshake. We add a special property to the
     // profile instead, which will be ignored by non-Forge servers and can be intercepted by a
     // Forge coremod, such as SpongeForge.
-    if (forwardingType == PlayerInfoForwarding.LEGACY) {
-      return original.addProperty(IS_FORGE_CLIENT_PROPERTY);
-    }
-
-    return original;
+    return original.addProperty(IS_FORGE_CLIENT_PROPERTY);
   }
 }
